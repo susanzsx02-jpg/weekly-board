@@ -1,0 +1,1354 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>周认知循环任务板 V0.9 原生云端登录版</title>
+<style>
+  :root{
+    --bg:#f7f6f3;
+    --card:#ffffff;
+    --text:#222;
+    --muted:#777;
+    --border:#e8e5df;
+    --a-bg:#fff3f1;
+    --a-head:#f6d5d0;
+    --b-bg:#fffaf0;
+    --b-head:#f4e7bd;
+    --c-bg:#f3f7fb;
+    --c-head:#dbe8f2;
+    --done:#aaa;
+    --shadow:0 2px 10px rgba(0,0,0,.05);
+    --day1:#dfe9ff;
+    --day2:#ffe5d6;
+    --day3:#eadfff;
+    --day4:#dff3ea;
+    --day5:#dcecff;
+    --day6:#ececec;
+    --day7:#fff0c9;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;
+    font-family: Inter, "PingFang SC","Microsoft YaHei",sans-serif;
+    background:var(--bg);
+    color:var(--text);
+  }
+  .app{
+    max-width:1600px;
+    margin:0 auto;
+    padding:24px;
+  }
+  .topbar{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:16px;
+    margin-bottom:18px;
+  }
+  h1{font-size:28px;margin:0}
+  .subtitle{color:var(--muted);font-size:14px;margin-top:6px}
+  .controls{display:flex;gap:10px;flex-wrap:wrap}
+  button{
+    border:1px solid var(--border);
+    background:white;
+    padding:9px 12px;
+    border-radius:10px;
+    cursor:pointer;
+    font-weight:600;
+  }
+  button:hover{background:#f1f1ef}
+  .week{
+    display:grid;
+    grid-template-columns:repeat(7,minmax(280px,1fr));
+    gap:14px;
+    overflow-x:auto;
+    padding-bottom:14px;
+  }
+  .day{
+    min-width:280px;
+    background:#fbfaf8;
+    border:1px solid var(--border);
+    border-radius:16px;
+    padding:12px;
+    box-shadow:var(--shadow);
+    border-top:6px solid var(--day-color, #ddd);
+  }
+  .day-head{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    gap:8px;
+    padding:4px 4px 12px;
+  }
+  .day-name{font-size:18px;font-weight:800}
+  .day-date{font-size:12px;color:var(--muted);margin-top:3px}
+  .focus{
+    font-size:12px;
+    color:#444;
+    background:var(--day-color, #efeeea);
+    border-radius:999px;
+    padding:5px 8px;
+    white-space:nowrap;
+    font-weight:700;
+  }
+  .weekday{
+    font-size:13px;
+    color:#555;
+    margin-top:3px;
+    font-weight:700;
+  }
+  .level{
+    border-radius:14px;
+    padding:10px;
+    margin-bottom:10px;
+    min-height:125px;
+    border:1px solid rgba(0,0,0,.04);
+  }
+  .level.a{background:var(--a-bg)}
+  .level.b{background:var(--b-bg)}
+  .level.c{background:var(--c-bg)}
+  .level-title{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:8px;
+    font-weight:800;
+  }
+  .badge{
+    width:28px;height:28px;border-radius:8px;
+    display:grid;place-items:center;
+    font-size:14px;font-weight:900;
+  }
+  .a .badge{background:var(--a-head)}
+  .b .badge{background:var(--b-head)}
+  .c .badge{background:var(--c-head)}
+  .task-list{
+    min-height:70px;
+  }
+  .task{
+    background:var(--card);
+    border:1px solid var(--border);
+    border-radius:12px;
+    margin:8px 0;
+    padding:10px;
+    box-shadow:0 1px 4px rgba(0,0,0,.04);
+    cursor:grab;
+  }
+  .task.dragging{opacity:.45}
+  .task-row{display:flex;align-items:flex-start;gap:8px}
+  .task input[type=checkbox]{margin-top:3px;transform:scale(1.15)}
+  .task-text{flex:1;line-height:1.5;font-size:14px}
+  .task.done .task-text{text-decoration:line-through;color:var(--done)}
+  .meta{
+    display:flex;
+    gap:6px;
+    flex-wrap:wrap;
+    margin-top:8px;
+  }
+  .tag{
+    font-size:11px;
+    color:#666;
+    border:1px solid var(--border);
+    border-radius:999px;
+    padding:2px 6px;
+    background:#fafafa;
+  }
+  .task-actions{
+    margin-top:8px;
+    display:flex;
+    gap:6px;
+  }
+  .tiny{
+    border:none;
+    background:#f3f2ef;
+    padding:5px 7px;
+    border-radius:7px;
+    font-size:11px;
+    font-weight:600;
+  }
+  .add-task{
+    width:100%;
+    border:1px dashed #cfcac2;
+    background:rgba(255,255,255,.5);
+    color:#777;
+    margin-top:7px;
+  }
+  .dropzone-over{
+    outline:2px dashed #888;
+    outline-offset:2px;
+  }
+  .legend{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    margin-bottom:16px;
+    color:#666;
+    font-size:13px;
+  }
+  .legend span{background:white;border:1px solid var(--border);padding:6px 9px;border-radius:999px}
+  dialog{
+    border:none;
+    border-radius:16px;
+    padding:0;
+    width:min(520px,92vw);
+    box-shadow:0 20px 70px rgba(0,0,0,.2);
+  }
+  .modal{padding:20px}
+  .modal h3{margin-top:0}
+  .field{margin-bottom:12px}
+  .field label{display:block;font-size:13px;font-weight:700;margin-bottom:6px}
+  input[type=text], select, textarea{
+    width:100%;
+    border:1px solid var(--border);
+    border-radius:10px;
+    padding:10px;
+    font:inherit;
+    background:white;
+  }
+  textarea{min-height:92px;resize:vertical}
+  .modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:15px}
+  @media(max-width:800px){
+    .app{padding:14px}
+    h1{font-size:22px}
+  }
+
+  .task-main{
+    display:flex;
+    align-items:flex-start;
+    gap:8px;
+  }
+  .expand-btn{
+    border:none;
+    background:transparent;
+    padding:0;
+    width:22px;
+    min-width:22px;
+    height:22px;
+    border-radius:6px;
+    cursor:pointer;
+    font-size:14px;
+    line-height:22px;
+    color:#666;
+  }
+  .expand-btn:hover{background:#f0efec}
+  .subtasks{
+    margin-top:9px;
+    margin-left:30px;
+    padding-left:10px;
+    border-left:2px solid #eeeae4;
+  }
+  .subtasks.hidden{display:none}
+  .subtask{
+    display:flex;
+    gap:8px;
+    align-items:flex-start;
+    padding:7px 0;
+    border-bottom:1px dashed #eeeae4;
+    font-size:13px;
+  }
+  .subtask:last-child{border-bottom:none}
+  .subtask.done .subtask-text{
+    text-decoration:line-through;
+    color:var(--done);
+  }
+  .subtask-text{flex:1;line-height:1.45}
+  .subtask-tools{
+    display:flex;
+    gap:4px;
+    margin-top:6px;
+    flex-wrap:wrap;
+  }
+  .subtask-input-row{
+    display:flex;
+    gap:6px;
+    margin-top:8px;
+  }
+  .subtask-input-row input{
+    flex:1;
+    border:1px solid var(--border);
+    border-radius:8px;
+    padding:7px 8px;
+    font:inherit;
+    font-size:12px;
+  }
+  .count-badge{
+    font-size:10px;
+    background:#f2f0ec;
+    border:1px solid var(--border);
+    padding:2px 6px;
+    border-radius:999px;
+    color:#777;
+    white-space:nowrap;
+  }
+
+
+  .editable-text{
+    outline:none;
+    border-radius:7px;
+    padding:2px 4px;
+    margin:-2px -4px;
+    transition:.15s ease;
+  }
+  .editable-text:hover{
+    background:#f7f6f3;
+  }
+  .editable-text:focus{
+    background:#fff;
+    box-shadow:0 0 0 2px rgba(80,110,180,.14);
+  }
+  .inline-hint{
+    font-size:10px;
+    color:#aaa;
+    margin-top:3px;
+  }
+  .subtasks{
+    margin-top:10px;
+    margin-left:28px;
+    padding-left:0;
+    border-left:none;
+    display:flex;
+    flex-direction:column;
+    gap:7px;
+  }
+  .subtasks.hidden{display:none}
+  .subtask{
+    display:flex;
+    gap:8px;
+    align-items:flex-start;
+    padding:9px 10px;
+    border:1px solid var(--border);
+    border-radius:10px;
+    background:#faf9f7;
+    font-size:13px;
+    box-shadow:0 1px 3px rgba(0,0,0,.025);
+  }
+  .subtask.done .subtask-text{
+    text-decoration:line-through;
+    color:var(--done);
+  }
+  .subtask-text{
+    flex:1;
+    line-height:1.45;
+    min-width:0;
+  }
+  .subtask-actions-inline{
+    display:flex;
+    gap:4px;
+    opacity:.65;
+  }
+  .subtask:hover .subtask-actions-inline{opacity:1}
+  .subtask-create-bar{
+    display:flex;
+    gap:6px;
+    flex-wrap:wrap;
+    margin-top:8px;
+  }
+  .auto-btn{
+    background:#f2efff;
+    border:1px solid #ded7ff;
+  }
+  .auto-btn:hover{background:#ebe5ff}
+  .task-actions{
+    align-items:center;
+    flex-wrap:wrap;
+  }
+  .task-actions .spacer{flex:1}
+
+
+  .manual-subtask-editor{display:flex;gap:6px;margin-top:8px;width:100%;}
+  .manual-subtask-editor input{flex:1;min-width:0;border:1px solid var(--border);background:#fff;border-radius:9px;padding:8px 10px;font:inherit;font-size:12px;}
+  .manual-subtask-editor button{flex:none;}
+  #restoreBtn:disabled{opacity:.45;cursor:not-allowed;}
+
+
+  .syncbar{
+    display:flex;
+    gap:8px;
+    align-items:center;
+    flex-wrap:wrap;
+    margin:12px 0 16px;
+    padding:10px 12px;
+    background:white;
+    border:1px solid var(--border);
+    border-radius:12px;
+    box-shadow:var(--shadow);
+  }
+  .syncstatus{
+    font-size:12px;
+    color:#666;
+    padding:5px 8px;
+    border-radius:999px;
+    background:#f3f2ef;
+  }
+  .syncstatus.online{background:#e9f7ee;color:#347653}
+  .syncstatus.warn{background:#fff5dd;color:#8a641b}
+  .authbox{
+    display:none;
+    gap:6px;
+    flex-wrap:wrap;
+    align-items:center;
+  }
+  .authbox input{
+    border:1px solid var(--border);
+    border-radius:8px;
+    padding:8px 9px;
+    font:inherit;
+    min-width:180px;
+  }
+  .auth-user{
+    font-size:12px;
+    color:#666;
+  }
+
+
+  #authPanel{
+    display:flex !important;
+    flex-direction:column;
+    gap:10px;
+    width:100%;
+  }
+  #authBox{
+    display:flex !important;
+    gap:8px;
+    flex-wrap:wrap;
+    width:100%;
+  }
+  #authBox input{
+    flex:1 1 220px;
+    min-height:44px;
+    font-size:16px;
+    -webkit-appearance:none;
+    appearance:none;
+    touch-action:manipulation;
+  }
+  #authBox button{
+    min-height:44px;
+    padding:10px 14px;
+    touch-action:manipulation;
+    cursor:pointer;
+    position:relative;
+    z-index:5;
+  }
+  .login-help{
+    font-size:12px;
+    color:#777;
+    line-height:1.45;
+  }
+  @media (max-width: 1024px){
+    #authBox{
+      display:grid !important;
+      grid-template-columns:1fr !important;
+    }
+    #authBox input,
+    #authBox button{
+      width:100% !important;
+      min-width:0 !important;
+      box-sizing:border-box;
+    }
+    #authPanel{
+      display:flex !important;
+    }
+  }
+
+</style>
+<style>
+.authpanel{width:100%;display:flex;flex-direction:column;gap:8px}.authpanel-title{font-size:12px;color:#777}.syncdetail{width:100%;font-size:11px;color:#777;line-height:1.4;word-break:break-word}@media(max-width:700px){.syncbar{align-items:stretch}.authbox{display:grid!important;grid-template-columns:1fr;width:100%}.authbox input,.authbox button,#signOutBtn,#syncNowBtn{width:100%!important;min-width:0}}
+
+  #authPanel{
+    display:flex !important;
+    flex-direction:column;
+    gap:10px;
+    width:100%;
+  }
+  #authBox{
+    display:flex !important;
+    gap:8px;
+    flex-wrap:wrap;
+    width:100%;
+  }
+  #authBox input{
+    flex:1 1 220px;
+    min-height:44px;
+    font-size:16px;
+    -webkit-appearance:none;
+    appearance:none;
+    touch-action:manipulation;
+  }
+  #authBox button{
+    min-height:44px;
+    padding:10px 14px;
+    touch-action:manipulation;
+    cursor:pointer;
+    position:relative;
+    z-index:5;
+  }
+  .login-help{
+    font-size:12px;
+    color:#777;
+    line-height:1.45;
+  }
+  @media (max-width: 1024px){
+    #authBox{
+      display:grid !important;
+      grid-template-columns:1fr !important;
+    }
+    #authBox input,
+    #authBox button{
+      width:100% !important;
+      min-width:0 !important;
+      box-sizing:border-box;
+    }
+    #authPanel{
+      display:flex !important;
+    }
+  }
+
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="topbar">
+    <div>
+      <h1>🧠 周认知循环任务板 V0.9 原生云端登录版</h1>
+      <div class="subtitle">A = 战略实验 / B = 项目施工 / C = 固定运行 · 支持拖拽、勾选、删除恢复、子任务折叠 · 无外部JS依赖 · 手机/iPad原生登录 · Supabase云端同步</div>
+    </div>
+    <div class="controls">
+      <button id="addBtn">＋ 新任务</button>
+      <button id="restoreBtn">↶ 恢复删除 <span id="trashCount"></span></button>
+      <button id="resetBtn">恢复示例</button>
+      <button id="clearDoneBtn">清理已完成</button>
+    </div>
+  </div>
+
+  <div class="legend">
+    <span>🟥 A：关键验证 / 战略推进</span>
+    <span>🟨 B：学习 / 项目施工</span>
+    <span>🟦 C：Daily / Fixed / 维护</span>
+    <span>🏷️ 执行属性：Daily / Fixed / Split / One-shot</span>
+    <span>↔️ 任意任务可拖到其他日期或其他层级</span>
+  </div>
+
+  
+  <div class="syncbar">
+    <span id="syncStatus" class="syncstatus warn">☁️ 云端未登录</span>
+
+    <div id="authPanel" class="authpanel">
+      <div class="authpanel-title">任务板账号登录</div>
+      <div class="login-help">手机 / iPad / PC 第一次使用这台设备时，都需要用同一个任务板账号登录一次。</div>
+      <div id="authBox" class="authbox">
+        <input id="authEmail" type="email" inputmode="email" autocomplete="email" placeholder="任务板邮箱">
+        <input id="authPassword" type="password" autocomplete="current-password" placeholder="任务板密码">
+        <button id="signInBtn" type="button" onclick="signIn()">登录任务板</button>
+        <button id="signUpBtn" type="button" onclick="signUp()">注册新账号</button>
+      </div>
+    </div>
+
+    <span id="authUser" class="auth-user"></span>
+    <button id="signOutBtn" type="button" onclick="signOut()" style="display:none">退出登录</button>
+    <button id="syncNowBtn" type="button" onclick="saveCloud(true)" style="display:none">↻ 立即同步</button>
+    <div id="syncDetail" class="syncdetail"></div>
+  </div>
+  <div id="week" class="week"></div>
+</div>
+
+<dialog id="taskDialog">
+  <form method="dialog" class="modal" id="taskForm">
+    <h3 id="dialogTitle">新增任务</h3>
+    <input type="hidden" id="editId">
+    <div class="field">
+      <label>任务名称</label>
+      <textarea id="taskText" required placeholder="例如：AI 信息源第二轮真实性筛选"></textarea>
+    </div>
+    <div class="field">
+      <label>日期</label>
+      <select id="taskDay"></select>
+    </div>
+    <div class="field">
+      <label>层级</label>
+      <select id="taskLevel">
+        <option value="A">A｜战略实验</option>
+        <option value="B">B｜项目施工</option>
+        <option value="C">C｜固定运行</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>执行属性</label>
+      <select id="taskType">
+        <option value="Split">Split</option>
+        <option value="One-shot">One-shot</option>
+        <option value="Daily">Daily</option>
+        <option value="Fixed">Fixed</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>备注 / Focus</label>
+      <input type="text" id="taskNote" placeholder="例如：AI Day / 商业验证 / 每天30分钟">
+    </div>
+
+    <div class="field">
+      <label>子任务（可选，每行一个）</label>
+      <textarea id="taskSubtasks" placeholder="适合 A 级大任务或 Split 任务，例如：&#10;第一轮广筛候选池&#10;第二轮真实性验证&#10;第三轮 Match 筛选"></textarea>
+    </div>
+
+    <div class="modal-actions">
+      <button value="cancel">取消</button>
+      <button id="saveTaskBtn" value="default">保存</button>
+    </div>
+  </form>
+</dialog>
+
+<script>
+const STORAGE_KEY = 'cognitive_week_board_v01';
+const SUPABASE_URL = 'https://gssygklcwjbawmsstjch.supabase.co';
+const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_mwOUXSwuSZKLD9jsIkjoDA_YzmgcZ_o';
+const SESSION_KEY = 'cognitive_week_board_supabase_session_v01';
+let currentUser = null;
+let accessToken = null;
+let refreshToken = null;
+let cloudWriteTimer = null;
+let applyingRemote = false;
+let pollTimer = null;
+const TRASH_KEY = 'cognitive_week_board_trash_v01';
+
+const days = [
+  {name:'Day 1', weekday:'星期六', date:'明天', focus:'AI Day', color:'var(--day1)'},
+  {name:'Day 2', weekday:'星期日', date:'', focus:'商业 Day', color:'var(--day2)'},
+  {name:'Day 3', weekday:'星期一', date:'', focus:'表达 Day', color:'var(--day3)'},
+  {name:'Day 4', weekday:'星期二', date:'', focus:'设计 Day', color:'var(--day4)'},
+  {name:'Day 5', weekday:'星期三', date:'', focus:'AI Day', color:'var(--day5)'},
+  {name:'Day 6', weekday:'星期四', date:'', focus:'休息', color:'var(--day6)'},
+  {name:'Day 7', weekday:'星期五', date:'', focus:'商业 Day', color:'var(--day7)'}
+];
+
+function calcDates(){
+  const weekdayNames = ['星期日','星期一','星期二','星期三','星期四','星期五','星期六'];
+  const d = new Date();
+  d.setDate(d.getDate()+1);
+  days.forEach((day,i)=>{
+    const x = new Date(d);
+    x.setDate(d.getDate()+i);
+    day.date = `${x.getMonth()+1}/${x.getDate()}`;
+    day.weekday = weekdayNames[x.getDay()];
+  });
+}
+
+const seedTasks = [
+  {id:crypto.randomUUID(),day:0,level:'A',type:'Split',text:'AI 信息源三轮筛选机制：启动候选池与第一轮广筛',note:'AI Day',subtasks:[{id:crypto.randomUUID(),text:"第一轮：大范围建立候选池",done:false},{id:crypto.randomUUID(),text:"第二轮：能力与信息真实性筛选",done:false},{id:crypto.randomUUID(),text:"第三轮：Match 程度筛选",done:false},{id:crypto.randomUUID(),text:"输出 AI 信息源 V0.1",done:false}],expanded:false,done:false},
+  {id:crypto.randomUUID(),day:0,level:'B',type:'Split',text:'建立 AI 信息源候选池与筛选字段',note:'AI',done:false},
+  {id:crypto.randomUUID(),day:0,level:'B',type:'One-shot',text:'学习 Prompt 基础概念',note:'AI 基础',done:false},
+  {id:crypto.randomUUID(),day:1,level:'A',type:'Split',text:'DBS 新一轮商品验证',note:'商业 Day',subtasks:[{id:crypto.randomUUID(),text:"明确本轮验证目标",done:false},{id:crypto.randomUUID(),text:"进入新一轮选品",done:false},{id:crypto.randomUUID(),text:"执行市场验证",done:false},{id:crypto.randomUUID(),text:"记录真实数据",done:false},{id:crypto.randomUUID(),text:"更新下一轮商品判断",done:false}],expanded:false,done:false},
+  {id:crypto.randomUUID(),day:1,level:'B',type:'Split',text:'用“物”搭第一版得物内容系统',note:'得物',done:false},
+  {id:crypto.randomUUID(),day:1,level:'B',type:'Split',text:'查看得物对标账号并提取拍摄规律',note:'得物',done:false},
+  {id:crypto.randomUUID(),day:2,level:'A',type:'Split',text:'T201–T205 表达系统第一次实操验证',note:'表达 Day',subtasks:[{id:crypto.randomUUID(),text:"确定第一批书籍 / 原始语料",done:false},{id:crypto.randomUUID(),text:"搭基础运行环节 V0.1",done:false},{id:crypto.randomUUID(),text:"跑第一次完整实操",done:false},{id:crypto.randomUUID(),text:"记录卡点与有效环节",done:false},{id:crypto.randomUUID(),text:"根据反馈更新系统",done:false}],expanded:false,done:false},
+  {id:crypto.randomUUID(),day:2,level:'B',type:'Split',text:'找第一批书籍 / 原始语料',note:'T201–T205',done:false},
+  {id:crypto.randomUUID(),day:2,level:'B',type:'Split',text:'搭建 T201–T205 基础运行环节 V0.1',note:'T201–T205',done:false},
+  {id:crypto.randomUUID(),day:3,level:'A',type:'Split',text:'视觉工具选择方法验证',note:'设计 Day',subtasks:[{id:crypto.randomUUID(),text:"扫描国内外视觉工具",done:false},{id:crypto.randomUUID(),text:"完成第一轮工具分类",done:false},{id:crypto.randomUUID(),text:"选出候选工具",done:false},{id:crypto.randomUUID(),text:"制作真实视觉产物",done:false},{id:crypto.randomUUID(),text:"比较效率、质量与适配度",done:false}],expanded:false,done:false},
+  {id:crypto.randomUUID(),day:3,level:'B',type:'Split',text:'国内外视觉工具市场第一轮扫描与分类',note:'视觉',done:false},
+  {id:crypto.randomUUID(),day:3,level:'B',type:'One-shot',text:'用候选工具完成第一个视觉小样',note:'视觉',done:false},
+  {id:crypto.randomUUID(),day:4,level:'A',type:'Split',text:'AI 信息源第二/第三轮：真实性、能力、Match',note:'AI Day',subtasks:[{id:crypto.randomUUID(),text:"能力验证",done:false},{id:crypto.randomUUID(),text:"真实性验证",done:false},{id:crypto.randomUUID(),text:"Match 筛选",done:false},{id:crypto.randomUUID(),text:"记录保留 / 淘汰理由",done:false},{id:crypto.randomUUID(),text:"形成订阅池 V0.1",done:false}],expanded:false,done:false},
+  {id:crypto.randomUUID(),day:4,level:'B',type:'One-shot',text:'学习 Memory 基础概念',note:'AI 基础',done:false},
+  {id:crypto.randomUUID(),day:4,level:'B',type:'One-shot',text:'学习 Context 基础概念',note:'AI 基础',done:false},
+  {id:crypto.randomUUID(),day:5,level:'B',type:'Split',text:'研究并拆解天干地支日记方法',note:'Society',done:false},
+  {id:crypto.randomUUID(),day:5,level:'B',type:'Split',text:'学习“抗炎”基础概念第一轮',note:'Body',done:false},
+  {id:crypto.randomUUID(),day:6,level:'A',type:'Split',text:'美团商家 AI 视觉需求验证',note:'商业 Day',subtasks:[{id:crypto.randomUUID(),text:"明确服务版本",done:false},{id:crypto.randomUUID(),text:"准备最低可展示案例",done:false},{id:crypto.randomUUID(),text:"确定第一批测试商家",done:false},{id:crypto.randomUUID(),text:"发出需求测试",done:false},{id:crypto.randomUUID(),text:"记录回复与付费意愿",done:false},{id:crypto.randomUUID(),text:"判断是否进入正式业务",done:false}],expanded:false,done:false},
+  {id:crypto.randomUUID(),day:6,level:'B',type:'One-shot',text:'拍摄得物第一版素材',note:'得物',done:false},
+  {id:crypto.randomUUID(),day:6,level:'B',type:'One-shot',text:'发布第一篇得物帖子',note:'得物',done:false},
+];
+
+function addDailyTasks(tasks){
+  for(let i=0;i<7;i++){
+    tasks.push({id:crypto.randomUUID(),day:i,level:'C',type:'Daily',text:'AI 播客账号互动 30 分钟',note:'账号维护',done:false});
+    tasks.push({id:crypto.randomUUID(),day:i,level:'C',type:'',text:'野生表达：有感即写 / 即说 / 即记录',note:'有感时执行｜不强制完成',done:false});
+  }
+  tasks.push({id:crypto.randomUUID(),day:1,level:'C',type:'Fixed',text:'上肢力量＋手臂训练＋力量后有氧',note:'周二',done:false});
+  tasks.push({id:crypto.randomUUID(),day:2,level:'C',type:'Fixed',text:'有氧训练',note:'周三',done:false});
+  tasks.push({id:crypto.randomUUID(),day:3,level:'C',type:'Fixed',text:'下肢臀腿＋足弓/体态修复＋力量后有氧',note:'周四',done:false});
+  tasks.push({id:crypto.randomUUID(),day:4,level:'C',type:'Fixed',text:'有氧训练',note:'周五',done:false});
+  tasks.push({id:crypto.randomUUID(),day:6,level:'C',type:'Fixed',text:'有氧训练',note:'周日',done:false});
+  tasks.push({id:crypto.randomUUID(),day:5,level:'C',type:'Fixed',text:'脸部＋眼睛矫正训练（每周一次）',note:'可拖动',done:false});
+  return tasks;
+}
+
+let tasks = [];
+let trash = [];
+function loadTrash(){try{trash=JSON.parse(localStorage.getItem(TRASH_KEY)||'[]')}catch(e){trash=[]}}
+function saveTrash(){localStorage.setItem(TRASH_KEY,JSON.stringify(trash));updateTrashUI()}
+function pushTrash(item){trash.push({...item,deletedAt:Date.now()});saveTrash()}
+function updateTrashUI(){const btn=document.getElementById('restoreBtn');const count=document.getElementById('trashCount');if(!btn||!count)return;count.textContent=trash.length?`(${trash.length})`:'';btn.disabled=trash.length===0}
+function restoreLatest(){
+ if(!trash.length)return;
+ const item=trash.pop();
+ if(item.kind==='task'){const restored=item.task;if(tasks.some(t=>t.id===restored.id))restored.id=crypto.randomUUID();tasks.push(restored)}
+ else if(item.kind==='subtask'){const parent=tasks.find(t=>t.id===item.parentId);if(parent){if(!Array.isArray(parent.subtasks))parent.subtasks=[];const idx=Math.max(0,Math.min(item.index??parent.subtasks.length,parent.subtasks.length));parent.subtasks.splice(idx,0,item.subtask);parent.expanded=true}else{trash.push(item);alert('这个子任务的主任务目前也被删除了。请先恢复主任务，再恢复这个子任务。');saveTrash();return}}
+ save();saveTrash();render();
+}
+
+
+
+function setSyncStatus(text, mode='warn', detail=''){
+  const el = document.getElementById('syncStatus');
+  const detailEl = document.getElementById('syncDetail');
+  if(el){
+    el.textContent = text;
+    el.className = 'syncstatus ' + mode;
+  }
+  if(detailEl) detailEl.textContent = detail || '';
+}
+
+function boardPayload(){
+  return {
+    version:'0.9',
+    tasks,
+    trash,
+    saved_at:new Date().toISOString()
+  };
+}
+
+function saveSession(session){
+  if(!session){
+    localStorage.removeItem(SESSION_KEY);
+    currentUser = null;
+    accessToken = null;
+    refreshToken = null;
+    return;
+  }
+  currentUser = session.user || null;
+  accessToken = session.access_token || null;
+  refreshToken = session.refresh_token || null;
+  localStorage.setItem(SESSION_KEY, JSON.stringify({
+    user: currentUser,
+    access_token: accessToken,
+    refresh_token: refreshToken
+  }));
+}
+
+function loadSession(){
+  try{
+    const raw = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null');
+    if(raw?.access_token && raw?.user){
+      currentUser = raw.user;
+      accessToken = raw.access_token;
+      refreshToken = raw.refresh_token || null;
+    }
+  }catch(e){
+    localStorage.removeItem(SESSION_KEY);
+  }
+}
+
+async function apiFetch(path, options={}){
+  const headers = new Headers(options.headers || {});
+  headers.set('apikey', SUPABASE_PUBLISHABLE_KEY);
+  if(accessToken) headers.set('Authorization', 'Bearer ' + accessToken);
+  if(options.body && !headers.has('Content-Type')){
+    headers.set('Content-Type', 'application/json');
+  }
+  return fetch(SUPABASE_URL + path, {...options, headers});
+}
+
+async function parseJsonSafe(res){
+  try { return await res.json(); }
+  catch { return null; }
+}
+
+async function refreshSession(){
+  if(!refreshToken) return false;
+  try{
+    const res = await fetch(SUPABASE_URL + '/auth/v1/token?grant_type=refresh_token', {
+      method:'POST',
+      headers:{
+        'apikey':SUPABASE_PUBLISHABLE_KEY,
+        'Content-Type':'application/json'
+      },
+      body:JSON.stringify({refresh_token:refreshToken})
+    });
+    const data = await parseJsonSafe(res);
+    if(!res.ok || !data?.access_token) return false;
+    saveSession(data);
+    updateAuthUI();
+    return true;
+  }catch(e){
+    return false;
+  }
+}
+
+async function cloudRequest(path, options={}){
+  let res = await apiFetch(path, options);
+  if(res.status === 401 && refreshToken){
+    const ok = await refreshSession();
+    if(ok) res = await apiFetch(path, options);
+  }
+  return res;
+}
+
+async function saveCloud(showStatus=true){
+  if(!currentUser || !accessToken) return false;
+  if(showStatus) setSyncStatus('☁️ 正在同步…','warn');
+
+  try{
+    const res = await cloudRequest('/rest/v1/weekly_boards?on_conflict=user_id', {
+      method:'POST',
+      headers:{
+        'Prefer':'resolution=merge-duplicates,return=minimal'
+      },
+      body:JSON.stringify({
+        user_id:currentUser.id,
+        board_data:boardPayload()
+      })
+    });
+
+    if(!res.ok){
+      const data = await parseJsonSafe(res);
+      const msg = data?.message || data?.error_description || ('HTTP ' + res.status);
+      setSyncStatus('⚠️ 云端写入失败','warn', msg);
+      return false;
+    }
+    setSyncStatus('☁️ 已同步到云端','online');
+    return true;
+  }catch(err){
+    setSyncStatus('⚠️ 云端写入异常','warn', err?.message || String(err));
+    return false;
+  }
+}
+
+async function loadCloud(){
+  if(!currentUser || !accessToken) return false;
+  setSyncStatus('☁️ 正在读取云端…','warn');
+
+  try{
+    const res = await cloudRequest(
+      '/rest/v1/weekly_boards?select=board_data,updated_at&user_id=eq.' + encodeURIComponent(currentUser.id) + '&limit=1',
+      {method:'GET'}
+    );
+
+    if(!res.ok){
+      const data = await parseJsonSafe(res);
+      const msg = data?.message || data?.error_description || ('HTTP ' + res.status);
+      setSyncStatus('⚠️ 云端读取失败','warn', msg);
+      return false;
+    }
+
+    const rows = await res.json();
+    if(Array.isArray(rows) && rows.length && rows[0]?.board_data){
+      const cloud = rows[0].board_data;
+      applyingRemote = true;
+      tasks = Array.isArray(cloud.tasks) ? cloud.tasks : tasks;
+      trash = Array.isArray(cloud.trash) ? cloud.trash : trash;
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+      localStorage.setItem(TRASH_KEY, JSON.stringify(trash));
+      applyingRemote = false;
+      updateTrashUI();
+      render();
+      setSyncStatus('☁️ 已载入云端数据','online');
+      return true;
+    }else{
+      const ok = await saveCloud(true);
+      if(ok) setSyncStatus('☁️ 已创建你的云端任务板','online');
+      return ok;
+    }
+  }catch(err){
+    setSyncStatus('⚠️ 云端读取异常','warn', err?.message || String(err));
+    return false;
+  }
+}
+
+function startPolling(){
+  if(pollTimer) clearInterval(pollTimer);
+  if(!currentUser) return;
+  pollTimer = setInterval(()=>{
+    if(document.visibilityState === 'visible') loadCloud();
+  }, 15000);
+}
+
+function stopPolling(){
+  if(pollTimer){
+    clearInterval(pollTimer);
+    pollTimer = null;
+  }
+}
+
+function subscribeRealtime(){
+  // V0.9 deliberately avoids external Realtime/WebSocket dependencies in mobile file previews.
+  startPolling();
+}
+
+function updateAuthUI(){
+  const panel = document.getElementById('authPanel');
+  const box = document.getElementById('authBox');
+  const userEl = document.getElementById('authUser');
+  const outBtn = document.getElementById('signOutBtn');
+  const syncBtn = document.getElementById('syncNowBtn');
+
+  if(currentUser && accessToken){
+    if(panel) panel.style.display='none';
+    if(box) box.style.display='none';
+    if(userEl) userEl.textContent='已登录：' + (currentUser.email || '当前账户');
+    if(outBtn) outBtn.style.display='';
+    if(syncBtn) syncBtn.style.display='';
+    setSyncStatus('☁️ 云端已连接','online');
+  }else{
+    if(panel) panel.style.display='flex';
+    if(box) box.style.display='grid';
+    if(userEl) userEl.textContent='';
+    if(outBtn) outBtn.style.display='none';
+    if(syncBtn) syncBtn.style.display='none';
+    setSyncStatus('☁️ 云端未登录','warn','请输入同一个任务板邮箱和密码。');
+  }
+}
+
+async function initAuth(){
+  loadSession();
+  updateAuthUI();
+  if(currentUser && accessToken){
+    await loadCloud();
+    startPolling();
+  }
+}
+
+async function signIn(){
+  const emailEl = document.getElementById('authEmail');
+  const passwordEl = document.getElementById('authPassword');
+  const btn = document.getElementById('signInBtn');
+
+  const email = (emailEl?.value || '').trim();
+  const password = passwordEl?.value || '';
+
+  if(!email || !password){
+    setSyncStatus('⚠️ 请输入邮箱和密码','warn','两个输入框都需要填写。');
+    return;
+  }
+
+  if(btn){
+    btn.disabled = true;
+    btn.textContent = '正在登录…';
+  }
+  setSyncStatus('正在登录…','warn','正在连接 Supabase。');
+
+  try{
+    const res = await fetch(SUPABASE_URL + '/auth/v1/token?grant_type=password', {
+      method:'POST',
+      headers:{
+        'apikey':SUPABASE_PUBLISHABLE_KEY,
+        'Content-Type':'application/json'
+      },
+      body:JSON.stringify({email,password})
+    });
+    const data = await parseJsonSafe(res);
+
+    if(!res.ok || !data?.access_token){
+      const msg = data?.msg || data?.message || data?.error_description || ('HTTP ' + res.status);
+      setSyncStatus('⚠️ 登录失败','warn', msg);
+      alert('登录失败：' + msg);
+      return;
+    }
+
+    saveSession(data);
+    updateAuthUI();
+    await loadCloud();
+    startPolling();
+  }catch(err){
+    setSyncStatus('⚠️ 登录异常','warn', err?.message || String(err));
+    alert('登录时发生异常：' + (err?.message || err));
+  }finally{
+    if(btn){
+      btn.disabled = false;
+      btn.textContent = '登录任务板';
+    }
+  }
+}
+
+async function signUp(){
+  const email = (document.getElementById('authEmail')?.value || '').trim();
+  const password = document.getElementById('authPassword')?.value || '';
+  if(!email || !password){
+    setSyncStatus('⚠️ 请输入邮箱和密码','warn','两个输入框都需要填写。');
+    return;
+  }
+  if(password.length < 6){
+    setSyncStatus('⚠️ 密码至少 6 位','warn');
+    return;
+  }
+
+  setSyncStatus('正在注册…','warn');
+  try{
+    const res = await fetch(SUPABASE_URL + '/auth/v1/signup', {
+      method:'POST',
+      headers:{
+        'apikey':SUPABASE_PUBLISHABLE_KEY,
+        'Content-Type':'application/json'
+      },
+      body:JSON.stringify({email,password})
+    });
+    const data = await parseJsonSafe(res);
+    if(!res.ok){
+      const msg = data?.msg || data?.message || data?.error_description || ('HTTP ' + res.status);
+      setSyncStatus('⚠️ 注册失败','warn', msg);
+      alert('注册失败：' + msg);
+      return;
+    }
+    if(data?.access_token){
+      saveSession(data);
+      updateAuthUI();
+      await loadCloud();
+      startPolling();
+    }else{
+      setSyncStatus('✅ 注册成功，请去邮箱确认','online','确认邮箱后回到这里直接登录。');
+      alert('注册成功。请去邮箱完成验证，然后回到这里登录。');
+    }
+  }catch(err){
+    setSyncStatus('⚠️ 注册异常','warn', err?.message || String(err));
+  }
+}
+
+async function signOut(){
+  try{
+    if(accessToken){
+      await apiFetch('/auth/v1/logout', {method:'POST'});
+    }
+  }catch(e){}
+  saveSession(null);
+  stopPolling();
+  updateAuthUI();
+}
+
+function load(){
+  calcDates();
+  loadTrash();
+  const saved = localStorage.getItem(STORAGE_KEY);
+  if(saved){
+    tasks = JSON.parse(saved);
+    tasks.forEach(t=>{
+      if(t.type && !['Daily','Fixed','Split','One-shot'].includes(t.type)) t.type='';
+      if(!Array.isArray(t.subtasks)) t.subtasks=[];
+      if(typeof t.expanded!=='boolean') t.expanded=false;
+    });
+    save();
+  }else{
+    tasks = addDailyTasks([...seedTasks]);
+    save();
+  }
+  updateTrashUI();
+}
+function save(){
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+  if(currentUser && !applyingRemote){
+    clearTimeout(cloudWriteTimer);
+    cloudWriteTimer = setTimeout(()=>saveCloud(false), 250);
+  }
+}
+
+const week = document.getElementById('week');
+const dialog = document.getElementById('taskDialog');
+const form = document.getElementById('taskForm');
+const taskDay = document.getElementById('taskDay');
+
+function render(){
+  week.innerHTML='';
+  days.forEach((day,dayIndex)=>{
+    const col = document.createElement('section');
+    col.className='day';
+    col.style.setProperty('--day-color', day.color);
+    col.innerHTML=`
+      <div class="day-head">
+        <div>
+          <div class="day-name">${day.name}</div>
+          <div class="weekday">${day.weekday}</div>
+          <div class="day-date">${day.date}</div>
+        </div>
+        <div class="focus">${day.focus}</div>
+      </div>
+    `;
+    ['A','B','C'].forEach(level=>{
+      const levelDiv=document.createElement('div');
+      levelDiv.className='level '+level.toLowerCase();
+      levelDiv.dataset.day=dayIndex;
+      levelDiv.dataset.level=level;
+      levelDiv.innerHTML=`
+        <div class="level-title">
+          <span class="badge">${level}</span>
+          <span>${level==='A'?'战略实验':level==='B'?'项目施工':'固定运行'}</span>
+        </div>
+        <div class="task-list"></div>
+        <button class="add-task">＋ 添加 ${level} 任务</button>
+      `;
+      const list=levelDiv.querySelector('.task-list');
+      tasks.filter(t=>t.day===dayIndex && t.level===level).forEach(t=>{
+        list.appendChild(taskEl(t));
+      });
+
+      const addButton = levelDiv.querySelector('.add-task');
+      addButton.onclick=()=>openNew(dayIndex,level);
+
+      levelDiv.addEventListener('dragover',e=>{
+        e.preventDefault();
+        levelDiv.classList.add('dropzone-over');
+      });
+      levelDiv.addEventListener('dragleave',()=>levelDiv.classList.remove('dropzone-over'));
+      levelDiv.addEventListener('drop',e=>{
+        e.preventDefault();
+        levelDiv.classList.remove('dropzone-over');
+        const id=e.dataTransfer.getData('text/plain');
+        const t=tasks.find(x=>x.id===id);
+        if(t){
+          t.day=dayIndex;
+          t.level=level;
+          save(); render();
+        }
+      });
+      col.appendChild(levelDiv);
+    });
+    week.appendChild(col);
+  });
+}
+
+
+function saveInlineText(el, callback){
+  const clean = el.innerText.replace(/\s+/g,' ').trim();
+  if(!clean) return;
+  callback(clean);
+  save();
+}
+
+function autoGenerateSubtasks(t){
+  const title = (t.text || '').trim();
+  const lower = title.toLowerCase();
+  let subs = [];
+
+  // High-fit templates for the user's current systems.
+  if(title.includes('AI 信息源') || title.includes('AI信息源')){
+    subs = [
+      '建立候选信息源池并按来源类型分类',
+      '检查专业背景、能力与一手/二手信息比例',
+      '核验信息真实性、时效性与可追溯性',
+      '判断与当前 AI 学习方向的 Match 程度',
+      '记录保留 / 淘汰理由并形成信息源 V0.1'
+    ];
+  } else if(title.includes('T201') || title.includes('表达系统')){
+    subs = [
+      '确定本轮训练目标与对应原始语料',
+      '准备书籍 / 语料并选出本次训练材料',
+      '按 T201–T205 基础链路完成第一次实操',
+      '记录卡点、有效环节与认知变化',
+      '根据反馈更新表达系统 V0.1'
+    ];
+  } else if(title.includes('DBS') || title.includes('商品验证') || title.includes('选品')){
+    subs = [
+      '明确本轮商业验证目标',
+      '确定候选商品 / 新一轮选品',
+      '执行真实市场测试',
+      '记录成交、询问、拒绝与数据表现',
+      '基于反馈调整下一轮选品判断'
+    ];
+  } else if(title.includes('美团') || title.includes('商家') || title.includes('菜品图')){
+    subs = [
+      '明确最低可售服务与交付形式',
+      '准备最小展示案例',
+      '确定第一批目标商家',
+      '发出真实需求测试',
+      '记录回复、询价、试单与拒绝原因',
+      '判断需求是否成立并决定是否继续投入'
+    ];
+  } else if(title.includes('得物')){
+    subs = [
+      '明确本轮得物内容目标',
+      '寻找并拆解对标账号 / 内容',
+      '确定拍摄场景、机位、构图与素材清单',
+      '完成第一版拍摄与内容制作',
+      '发布并记录首轮数据反馈'
+    ];
+  } else if(title.includes('视觉') || title.includes('设计') || title.includes('工具')){
+    subs = [
+      '明确本轮真实视觉需求',
+      '扫描并分类候选工具',
+      '筛出 1–2 个优先测试工具',
+      '完成一个实际视觉产物',
+      '比较质量、效率、学习成本与适配度'
+    ];
+  } else if(title.includes('日记') || title.includes('天干地支')){
+    subs = [
+      '看懂原方法的记录对象与运行逻辑',
+      '拆解输入、分类、记录与复盘结构',
+      '与原有日记系统做保留 / 删除 / 新增映射',
+      '生成新版日记模板 V0.1',
+      '开始实际记录并保留后续月度复盘入口'
+    ];
+  } else if(title.includes('护肤') || title.includes('油痘') || title.includes('油敏')){
+    subs = [
+      '确认当前要解决的皮肤问题与边界',
+      '收集可靠的基础护肤理念与信息源',
+      '整理清洁、保湿、防晒、屏障等基础原则',
+      '建立第一版产品筛选标准',
+      '后续按单变量原则测试并记录反馈'
+    ];
+  } else if(title.includes('抗炎') || title.includes('炎症')){
+    subs = [
+      '理解炎症、急性炎症与慢性炎症的基础概念',
+      '梳理睡眠、压力、运动、饮食与炎症的关系',
+      '区分有证据的抗炎原则与营销概念',
+      '整理第一版抗炎认知卡',
+      '确定下一步需要继续研究的问题'
+    ];
+  } else if(t.level === 'A'){
+    subs = [
+      '明确本任务要验证的核心假设',
+      '确定最小可行行动与判断标准',
+      '执行第一轮真实测试',
+      '收集结果、过程、能力与状态反馈',
+      '更新认知并确定下一步动作'
+    ];
+  } else if(t.type === 'Split'){
+    subs = [
+      '明确任务完成标准与范围',
+      '完成第一阶段准备 / 信息收集',
+      '完成第二阶段核心执行',
+      '完成第三阶段整理 / 输出',
+      '检查结果并记录下一步'
+    ];
+  } else {
+    subs = [
+      '明确任务目标与完成标准',
+      '准备必要资料 / 条件',
+      '执行核心动作',
+      '检查结果并完成收尾'
+    ];
+  }
+
+  const existing = new Set((t.subtasks||[]).map(s=>s.text));
+  const additions = subs
+    .filter(x=>!existing.has(x))
+    .map(x=>({id:crypto.randomUUID(), text:x, done:false}));
+
+  t.subtasks = [...(t.subtasks||[]), ...additions];
+  t.expanded = true;
+  save();
+  render();
+}
+
+function taskEl(t){
+  if(!Array.isArray(t.subtasks)) t.subtasks = [];
+  if(typeof t.expanded !== 'boolean') t.expanded = false;
+  const el=document.createElement('div');
+  el.className='task'+(t.done?' done':'');
+  el.draggable=true; el.dataset.id=t.id;
+  const finished=t.subtasks.filter(s=>s.done).length, total=t.subtasks.length, hasSubs=total>0;
+  el.innerHTML=`
+    <div class="task-main">
+      ${hasSubs?`<button class="expand-btn" title="展开/收起子任务">${t.expanded?'▾':'▸'}</button>`:`<span style="width:22px;min-width:22px"></span>`}
+      <div style="flex:1"><div class="task-row"><input type="checkbox" class="main-check" ${t.done?'checked':''}><div class="task-text editable-text" contenteditable="true" spellcheck="false">${escapeHtml(t.text)}</div>${hasSubs?`<span class="count-badge">${finished}/${total}</span>`:''}</div><div class="inline-hint">点任务文字即可直接修改</div><div class="meta">${t.type?`<span class="tag">${escapeHtml(t.type)}</span>`:''}${t.note?`<span class="tag">${escapeHtml(t.note)}</span>`:''}</div></div>
+    </div>
+    ${hasSubs?`<div class="subtasks ${t.expanded?'':'hidden'}">${t.subtasks.map((s,i)=>`<div class="subtask ${s.done?'done':''}" data-subindex="${i}"><input type="checkbox" class="sub-check" data-subindex="${i}" ${s.done?'checked':''}><div class="subtask-text editable-text" contenteditable="true" spellcheck="false" data-subindex="${i}">${escapeHtml(s.text)}</div><div class="subtask-actions-inline"><button class="tiny sub-del" data-subindex="${i}" title="删除子任务">删除</button></div></div>`).join('')}<div class="subtask-create-bar"><button class="tiny auto-btn auto-subtask">✨ 自动生成子任务</button></div><div class="manual-subtask-editor"><input type="text" class="manual-subtask-input" placeholder="手动输入一个子任务…"><button class="tiny manual-subtask-add">＋ 添加</button></div></div>`:`<div class="manual-subtask-editor"><input type="text" class="manual-subtask-input" placeholder="手动输入第一个子任务…"><button class="tiny manual-subtask-add">＋ 添加</button></div>`}
+    <div class="task-actions"><button class="tiny edit">设置</button><button class="tiny del">删除</button><span class="spacer"></span>${!hasSubs?`<button class="tiny auto-btn auto-subtask">✨ 自动生成子任务</button>`:''}</div>`;
+
+  const mainText=el.querySelector('.task-text');
+  mainText.addEventListener('blur',()=>saveInlineText(mainText,val=>t.text=val));
+  mainText.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();mainText.blur()}});
+  el.querySelectorAll('.subtask-text').forEach(st=>{st.addEventListener('blur',()=>{const i=+st.dataset.subindex;saveInlineText(st,val=>t.subtasks[i].text=val)});st.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();st.blur()}})});
+  el.addEventListener('dragstart',e=>{if(e.target.closest('button,input,[contenteditable="true"]')){e.preventDefault();return}el.classList.add('dragging');e.dataTransfer.setData('text/plain',t.id)});
+  el.addEventListener('dragend',()=>el.classList.remove('dragging'));
+  el.querySelector('.main-check').onchange=e=>{t.done=e.target.checked;save();render()};
+  const expandBtn=el.querySelector('.expand-btn'); if(expandBtn){expandBtn.onclick=e=>{e.stopPropagation();t.expanded=!t.expanded;save();render()}};
+  el.querySelectorAll('.sub-check').forEach(cb=>{cb.onchange=e=>{const i=+e.target.dataset.subindex;t.subtasks[i].done=e.target.checked;save();render()}});
+  el.querySelectorAll('.sub-del').forEach(btn=>{btn.onclick=e=>{e.stopPropagation();const i=+btn.dataset.subindex;const removed=t.subtasks.splice(i,1)[0];if(removed)pushTrash({kind:'subtask',parentId:t.id,parentTitle:t.text,index:i,subtask:removed});save();render()}});
+  el.querySelectorAll('.auto-subtask').forEach(btn=>{btn.onclick=e=>{e.stopPropagation();autoGenerateSubtasks(t)}});
+  const manualInput=el.querySelector('.manual-subtask-input');
+  const manualAdd=el.querySelector('.manual-subtask-add');
+  function addManualSubtask(){const val=(manualInput?.value||'').trim();if(!val)return;t.subtasks.push({id:crypto.randomUUID(),text:val,done:false});t.expanded=true;save();render()}
+  if(manualAdd){manualAdd.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();addManualSubtask()});manualAdd.addEventListener('touchend',e=>{e.preventDefault();e.stopPropagation();addManualSubtask()},{passive:false})}
+  if(manualInput){manualInput.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();addManualSubtask()}})}
+  el.querySelector('.edit').onclick=()=>openEdit(t);
+  el.querySelector('.del').onclick=()=>{pushTrash({kind:'task',task:JSON.parse(JSON.stringify(t))});tasks=tasks.filter(x=>x.id!==t.id);save();render()};
+  return el;
+}
+
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+
+function setupDayOptions(){
+  taskDay.innerHTML = days.map((d,i)=>`<option value="${i}">${d.name} · ${d.weekday} · ${d.date} · ${d.focus}</option>`).join('');
+}
+function openNew(day=0,level='B'){
+  document.getElementById('dialogTitle').textContent='新增任务';
+  document.getElementById('editId').value='';
+  document.getElementById('taskText').value='';
+  document.getElementById('taskDay').value=day;
+  document.getElementById('taskLevel').value=level;
+  document.getElementById('taskType').value=level==='C'?'Daily':'Split';
+  document.getElementById('taskNote').value='';
+  document.getElementById('taskSubtasks').value='';
+  dialog.showModal();
+}
+function openEdit(t){
+  document.getElementById('dialogTitle').textContent='任务设置';
+  document.getElementById('editId').value=t.id;
+  document.getElementById('taskText').value=t.text;
+  document.getElementById('taskDay').value=t.day;
+  document.getElementById('taskLevel').value=t.level;
+  document.getElementById('taskType').value=t.type;
+  document.getElementById('taskNote').value=t.note||'';
+  document.getElementById('taskSubtasks').value=(t.subtasks||[]).map(s=>s.text).join('\n');
+  dialog.showModal();
+}
+
+form.addEventListener('submit',e=>{
+  e.preventDefault();
+  const id=document.getElementById('editId').value;
+  const data={
+    text:document.getElementById('taskText').value.trim(),
+    day:+document.getElementById('taskDay').value,
+    level:document.getElementById('taskLevel').value,
+    type:document.getElementById('taskType').value,
+    note:document.getElementById('taskNote').value.trim(),
+    subtasks:document.getElementById('taskSubtasks').value
+      .split(/\n+/)
+      .map(x=>x.trim())
+      .filter(Boolean)
+      .map(x=>({id:crypto.randomUUID(),text:x,done:false}))
+  };
+  if(!data.text) return;
+  if(id){
+    const t=tasks.find(x=>x.id===id);
+    const oldMap = new Map((t.subtasks||[]).map(s=>[s.text,s]));
+    data.subtasks = data.subtasks.map(s => oldMap.has(s.text) ? oldMap.get(s.text) : s);
+    Object.assign(t,data);
+  }else{
+    tasks.push({id:crypto.randomUUID(),done:false,expanded:false,...data});
+  }
+  save(); dialog.close(); render();
+});
+
+document.getElementById('addBtn').onclick=()=>openNew();
+document.getElementById('restoreBtn').onclick=()=>restoreLatest();
+document.getElementById('clearDoneBtn').onclick=()=>{
+  const doneTasks=tasks.filter(t=>t.done);
+  doneTasks.forEach(t=>pushTrash({kind:'task',task:JSON.parse(JSON.stringify(t))}));
+  tasks=tasks.filter(t=>!t.done); save(); render();
+};
+document.getElementById('resetBtn').onclick=()=>{
+  if(confirm('确定恢复到示例任务吗？当前本地任务会被覆盖。')){
+    tasks=addDailyTasks([...seedTasks].map(x=>({...x,id:crypto.randomUUID()})));
+    save(); render();
+  }
+};
+
+
+
+
+
+const pwdInput = document.getElementById('authPassword');
+if(pwdInput){
+  pwdInput.addEventListener('keydown', e=>{
+    if(e.key === 'Enter'){
+      e.preventDefault();
+      signIn();
+    }
+  });
+}
+
+load();
+setupDayOptions();
+render();
+initAuth();
+</script>
+</body>
+</html>
